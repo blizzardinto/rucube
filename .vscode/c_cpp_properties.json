@@ -1,0 +1,16 @@
+{
+    // IntelliSense 配置：告诉 C/C++ 插件用 MSYS2 的 g++ 解析代码
+    "version": 4,
+    "configurations": [
+        {
+            "name": "Win32",
+            "compilerPath": "g++",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "windows-gcc-x64"
+        }
+    ]
+}

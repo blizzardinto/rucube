@@ -1,0 +1,30 @@
+{
+    // 调试配置：MSYS2 gdb（cpptools 插件的 cppdbg 模式）
+    //
+    // Console::init() 内部会强制 AllocConsole 弹出独立游戏窗口，
+    // 与调试器运行在同一进程内，断点/单步都正常；
+    // 所以这里不需要传任何参数，也不需要 externalConsole。
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Tetris (gdb)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/tetris.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb",
+            "preLaunchTask": "build-debug",
+            "setupCommands": [
+                {
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

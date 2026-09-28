@@ -1,0 +1,56 @@
+{
+    // 构建任务：用 PATH 中的 g++ 编译（跨机器通用，不写死路径）
+    // debug 版 -g -O0（带调试符号、不优化，断点才能对上）
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-debug",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-std=c++20",
+                "-g",
+                "-O0",
+                "-Wall",
+                "-o", "${workspaceFolder}/tetris.exe",
+                "main.cpp",
+                "Console.cpp",
+                "Cube.cpp",
+                "Board.cpp",
+                "Hud.cpp",
+                "Sound.cpp",
+                "-lwinmm"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "build-release",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-std=c++20",
+                "-O2",
+                "-Wall",
+                "-o", "${workspaceFolder}/tetris.exe",
+                "main.cpp",
+                "Console.cpp",
+                "Cube.cpp",
+                "Board.cpp",
+                "Hud.cpp",
+                "Sound.cpp",
+                "-lwinmm"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": ["$gcc"]
+        }
+    ]
+}

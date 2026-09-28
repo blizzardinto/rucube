@@ -1,0 +1,13 @@
+# 构建产物
+build/
+*.exe
+*.o
+*.obj
+
+# IDE
+.idea/
+.vscode/ipch/
+
+# 系统文件
+Thumbs.db
+Desktop.ini

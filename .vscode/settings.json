@@ -1,0 +1,6 @@
+{
+    // 工具链（g++/gdb）从系统 PATH 解析，不在项目里写死路径
+    "files.associations": {
+        "*.h": "cpp"
+    }
+}
