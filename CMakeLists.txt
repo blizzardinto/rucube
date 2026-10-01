@@ -18,6 +18,8 @@ if (WIN32)
 endif()
 
 add_executable(Tetris main.cpp
+        Game.cpp
+        Game.h
         Console.cpp
         Console.h
         Cube.cpp
