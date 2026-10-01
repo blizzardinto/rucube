@@ -3,68 +3,117 @@
 
 #include "Console.h"
 #include "GameConfig.h"
+#include <array>
 
-// ==========================================
-//  Cube — 一个正在下落的方块（俄罗斯方块 = Tetromino）
+// ============================================================================
+// 🧱 方块类 (Cube) — 面向对象核心思想教学：
 //
-//  设计要点：
-//   1. Cube 只负责"形状数据 + 位置"，完全不知道 Board 的存在；
-//   2. 内部用 4 个格子相对参考点 (mX, mY) 的偏移表示形状；
-//   3. move()/rotate() 只改数据不检查碰撞 ——
-//      是否合法由外部 Board::canPlace() 判断，
-//      旋转失败时可用 restore() 回滚；
-//   4. 渲染也归 Cube 自己：draw / drawGhost / drawPreview。
-// ==========================================
+// 【1. 现实世界比喻：舞台上的特技演员 / 独立积木】
+// 在真实的俄罗斯方块中，一个方块（Tetromino）就是由 4 个小格子组成的几何体。
+// 它具有【属性】（我的形状是什么？我的坐标在哪里？我的颜色是什么？）
+// 它具有【行为】（我可以向左/右走一步、我可以顺时针翻滚、我可以画出我自己）。
+//
+// 【2. 面向对象的单一职责原则 (Single Responsibility)】
+// Cube【只管自己】！它不知道棋盘（Board）有多大，也不知道自己有没有撞墙。
+// 它就像闭着眼睛走路的人：Game 让它走一步，它就往前挪；
+// 真正检查“你撞没撞墙”的是裁判 Board（调用 Board::canPlace）。
+// 这种让每个类各司其职的做法，叫“高内聚、低耦合”。
+//
+// 【3. 状态回滚机制 (Rollback / 乐观更新)】
+// 当玩家按下旋转键时，Cube 先大胆地 rotate() 翻转。
+// 如果 Board 裁判发现翻转后撞墙了，Cube 就能调用 restore() 回滚到上一帧姿态。
+// ============================================================================
 class Cube {
 public:
+    // ------------------------------------------------------------------------
+    // 经典 7 种俄罗斯方块类型 (Tetromino)
+    // C++ 知识点：用 enum 表示有限的选项集合；COUNT 用于获取总数（共 7 种）
+    // ------------------------------------------------------------------------
     enum Type { I, O, T, S, Z, J, L, COUNT };
 
-    struct Cell { int x, y; };
+    // ------------------------------------------------------------------------
+    // 小方格数据结构：表示一个二维坐标 (x, y)
+    // C++ 知识点：struct 和 class 几乎相同，但 struct 默认所有成员是 public，
+    // 适合用来定义纯数据打包的“轻量结构”。
+    // ------------------------------------------------------------------------
+    struct Cell { 
+        int x; 
+        int y; 
+    };
 
-    // 以指定形状生成（出生点在顶部中间）
+    // 构造函数：生成指定形状的方块（默认是 I 型），初始位置在顶部中间
+    // C++ 知识点：explicit 防止编译器发生隐式类型转换（如误将 int 隐式转为 Cube）
     explicit Cube(Type t = Type::I);
 
-    // 随机形状（工厂方法）
+    // 随机形状（静态工厂方法）
+    // C++ 知识点：static 成员函数属于整个类，而不是某个具体对象。
+    // 调用时不需要先有对象，直接写 Cube::randomType() 即可！
     static Type randomType();
 
-    // --- 变换（不查碰撞，需配合 Board::canPlace） ---
-    void move(int dx, int dy);
-    void rotate();      // 顺时针 90°（O 型自动不变）
-    void restore();    // 回滚到上一次 rotate() 之前
+    // ------------------------------------------------------------------------
+    // 变换操作（状态改变行为）
+    // 注意：Cube 自己不检查碰撞，是否合法由外部 Board::canPlace() 判断！
+    // ------------------------------------------------------------------------
+    void move(int dx, int dy);  // 相对移动：x 改变 dx，y 改变 dy
+    void rotate();              // 顺时针旋转 90 度（O 型方块保持不变）
+    void restore();             // 回滚操作：撤销刚才那次旋转（撞墙时恢复原状）
 
-    // --- 查询 ---
-    void  cells(Cell out[4]) const;   // 4 个格子的绝对坐标
-    Type  type()  const { return mType; }
-    Color color() const;              // 每种形状固定颜色
-    int   x() const { return mX; }
-    int   y() const { return mY; }
+    // ------------------------------------------------------------------------
+    // 状态查询接口（只读查询）
+    // C++ 知识点：末尾的 const 表示“该函数绝不会修改对象的任何成员变量”。
+    // 凡是不修改内部状态的成员函数，都应当声明为 const，这叫 const 正确性！
+    // ------------------------------------------------------------------------
+    
+    // 获取当前方块包含的 4 个小格子的绝对坐标（在棋盘上的真实 x, y）
+    // 现代 C++ 风格推荐：返回 std::array，方便用 for (const auto& cell : c.cells()) 遍历
+    std::array<Cell, 4> cells() const;
 
-    // 形状包围盒（相对参考点的范围），供居中/预览计算用
-    void  bounds(int& minX, int& minY, int& maxX, int& maxY) const;
+    // 兼容传统传出参数写法
+    void cells(Cell out[4]) const;
 
-    // --- 渲染（Cube 负责画自己） ---
-    // (px, py) 为棋盘边框左上角的屏幕坐标
-    void draw(Console& con, int px, int py) const;               // 实心方块
-    // 在预览框"内部区域"居中绘制（供 Hud 的 Next 预览用）
-    void drawPreview(Console& con, int innerX, int innerY,
-                     int innerW, int innerH) const;
+    Type  type()  const { return mType; }  // 获取方块形状类型
+    Color color() const;                  // 获取方块对应的专属颜色
+    int   x()     const { return mX; }     // 获取参考点 X 坐标
+    int   y()     const { return mY; }     // 获取参考点 Y 坐标
 
-    // 出生位置（Board 宽度的一半偏左），供外部摆放
+    // 计算当前方块的包围盒（相对参考点的边界范围 minX~maxX, minY~maxY）
+    // 供 Next 预览框计算居中偏移使用
+    void bounds(int& minX, int& minY, int& maxX, int& maxY) const;
+
+    // ------------------------------------------------------------------------
+    // 自绘制方法（Cube 负责把自己的 4 个小格子画到控制台双缓冲画布上）
+    // ------------------------------------------------------------------------
+    // 在主棋盘区域绘制实心方块：(px, py) 为棋盘边框左上角屏幕坐标
+    void draw(Console& con, int px, int py) const;
+
+    // 在右侧 NEXT 预览框内部居中绘制该方块
+    void drawPreview(Console& con, int innerX, int innerY, int innerW, int innerH) const;
+
+    // 方块刚出生的默认棋盘坐标（顶部中央偏左）
     static constexpr int SPAWN_X = 3;
     static constexpr int SPAWN_Y = 0;
 
 private:
-    Type mType;
-    int  mX, mY;           // 参考点（形状包围盒左上角）
-    int  mOff[4][2];       // 4 个格子的相对偏移 {dx, dy}
-    int  mOld[4][2];       // rotate() 前的备份
+    // ========================================================================
+    // 私有数据成员 (Encapsulation 封装原则：隐藏内部细节，外部只能通过 public 函数访问)
+    // ========================================================================
+    Type mType;        // 当前方块的类型（I, O, T...）
+    int  mX;           // 锚点/参考点 X 坐标（棋盘横向位置）
+    int  mY;           // 锚点/参考点 Y 坐标（棋盘纵向位置）
 
-    // 画一格（左/右两个字符），供 draw / drawGhost / drawPreview 复用
-    static void paintCell(Console& con, int x, int y, Color c,
-                          char left, char right);
+    // 4 个小格子相对于锚点 (mX, mY) 的局部偏移坐标：mOff[0~3][0=dx, 1=dy]
+    // 真实坐标 = (mX + mOff[i][0], mY + mOff[i][1])
+    int  mOff[4][2];   
+    int  mOld[4][2];   // 备份上一次的偏移，供 restore() 回滚使用
 
+    // 内部绘图小工具：在屏幕 (x, y) 处画出 1 个方格（由左右两个半角字符拼成）
+    static void paintCell(Console& con, int x, int y, Color c, char left, char right);
+
+    // 7 种经典方块的初始形状定义表（常量静态查找表）
     static const int   SHAPES[Type::COUNT][4][2];
+    // 每种方块对应的颜色映射表
     static const Color COLORS[Type::COUNT];
 };
 
 #endif // CUBE_HPP
+

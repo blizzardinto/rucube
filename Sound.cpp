@@ -194,7 +194,7 @@ void playSeqWave(const int* freqs, const int* durs, int n) {
     waveOutClose(hOut);
 }
 
-// 实际播放（在后台线程中执行）
+// 实际播放（在后台工作线程中执行，不阻塞主游戏循环）
 void playSeq(Sfx s) {
     switch (s) {
         case Sfx::Start: {
@@ -203,33 +203,14 @@ void playSeq(Sfx s) {
             playSeqWave(f, d, 4);
             break;
         }
-        case Sfx::Eat: {
-            const int f[] = { 880 };
-            const int d[] = {  45 };
-            playSeqWave(f, d, 1);
-            break;
-        }
-        case Sfx::EatBonus: {
-            const int f[] = { 988, 1319 };             // 两声快速上行
-            const int d[] = {  60,   90 };
-            playSeqWave(f, d, 2);
-            break;
-        }
         case Sfx::SpeedUp: {
             const int f[] = { 660, 880, 1175 };
             const int d[] = {  70,  70,  110 };
             playSeqWave(f, d, 3);
             break;
         }
-        case Sfx::Die: {
-            const int f[] = { 600, 450, 300, 200 };    // 下行滑落
-            const int d[] = { 130, 130, 130, 320 };
-            playSeqWave(f, d, 4);
-            break;
-        }
         case Sfx::GameOver: {
-            // 经典 game over 旋律：E5 -> C5 -> G4 -> E4 下行，
-            // 最后落在一个低沉长音上，辨识度高、有"结束感"
+            // 经典 game over 旋律：E5 -> C5 -> G4 -> E4 下行，最后落在低沉长音上
             const int f[] = { 659, 523, 392, 330, 196 };
             const int d[] = { 180, 180, 180, 180, 500 };
             playSeqWave(f, d, 5);
@@ -278,24 +259,35 @@ void playSeq(Sfx s) {
 
 } // namespace
 
+// ============================================================================
+// 异步播放音效实现
+//
+// 【C++ 知识点：多线程 (std::thread) 与 原子变量 (std::atomic)】
+// - std::thread([s] { ... }).detach()：启动一个独立的后台线程去播音，
+//   .detach() 表示“放手”，让该线程播完后自己默默销毁，主线程不用等它！
+// - g_playing 是 std::atomic<bool>，保证多个线程同时读写状态标记时不会发生
+//   “数据竞争 (Data Race)”而引发未定义崩溃。
+// ============================================================================
 void playSfx(Sfx s, bool force) {
     if (!g_enabled.load()) return;
 
     if (force) {
-        // 强制播放：等当前音效播完（音效都很短，最长约 1s），避免被吞
+        // 强制播放：等待当前音效播完（音效都很短，最长约 1s），避免被丢弃
         while (g_playing.load()) Sleep(10);
         g_playing.store(true);
     } else {
-        // 同一时刻只播一个音效，正在播时忽略新请求
+        // 乐观锁：若当前有音效在播则忽略新请求，避免音效扎堆重叠杂乱
         bool expected = false;
         if (!g_playing.compare_exchange_strong(expected, true)) return;
     }
 
+    // 创建后台工作线程异步发声
     std::thread([s] {
         playSeq(s);
-        g_playing.store(false);
+        g_playing.store(false); // 播完重置标记
     }).detach();
 }
+
 
 void setSoundEnabled(bool on) {
     g_enabled.store(on);
